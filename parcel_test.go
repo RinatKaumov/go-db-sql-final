@@ -29,6 +29,7 @@ func getTestParcel() Parcel {
 }
 
 // TestAddGetDelete проверяет добавление, получение и удаление посылки
+// TestAddGetDelete проверяет добавление, получение и удаление посылки
 func TestAddGetDelete(t *testing.T) {
 	// prepare
 	db, err := sql.Open("sqlite", "tracker.db") // подключаемся к файлу tracker.db
@@ -47,10 +48,9 @@ func TestAddGetDelete(t *testing.T) {
 	// get
 	retrievedParcel, err := store.Get(parcel.Number) // получаем посылку по идентификатору
 	require.NoError(t, err)
-	require.Equal(t, parcel.Client, retrievedParcel.Client)
-	require.Equal(t, ParcelStatusRegistered, retrievedParcel.Status) // проверяем статус "registered"
-	require.Equal(t, parcel.Address, retrievedParcel.Address)
-	require.Equal(t, parcel.CreatedAt, retrievedParcel.CreatedAt)
+
+	// Сравниваем всю структуру целиком
+	require.Equal(t, parcel, retrievedParcel) // Сравниваем всю структуру, включая Number
 
 	// delete
 	err = store.Delete(parcel.Number) // удаляем посылку
@@ -117,7 +117,7 @@ func TestSetStatus(t *testing.T) {
 // TestGetByClient проверяет получение посылок по идентификатору клиента
 func TestGetByClient(t *testing.T) {
 	// prepare
-	db, err := sql.Open("sqlite", "tracker.db") // подключаемся к файлу tracker.db
+	db, err := sql.Open("sqlite", "tracker.db")
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -152,11 +152,7 @@ func TestGetByClient(t *testing.T) {
 
 	// check
 	for _, parcel := range storedParcels {
-		original, exists := parcelMap[parcel.Number]
-		require.True(t, exists)
-		require.Equal(t, original.Client, parcel.Client)
-		require.Equal(t, ParcelStatusRegistered, parcel.Status) // проверяем статус "registered"
-		require.Equal(t, original.Address, parcel.Address)
-		require.Equal(t, original.CreatedAt, parcel.CreatedAt)
+		original := parcelMap[parcel.Number]
+		require.Equal(t, original, parcel) // Сравниваем всю структуру, включая поле Number
 	}
 }

@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -45,10 +46,10 @@ func (s ParcelStore) Get(number int) (Parcel, error) {
 	var p Parcel
 	err := row.Scan(&p.Number, &p.Client, &p.Status, &p.Address, &p.CreatedAt)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return p, fmt.Errorf("посылка с номером %d не найдена", number)
+		if errors.Is(err, sql.ErrNoRows) {
+			return p, err // Возвращаем только оригинальную ошибку sql.ErrNoRows
 		}
-		return p, err
+		return p, err // Возвращаем оригинальную ошибку
 	}
 
 	return p, nil
@@ -100,22 +101,20 @@ func (s ParcelStore) SetStatus(number int, status string) error {
 }
 
 func (s ParcelStore) SetAddress(number int, address string) error {
-	// Получаем текущий статус посылки
-	parcel, err := s.Get(number)
-	if err != nil {
-		return err
-	}
+	// SQL-запрос для обновления адреса, если статус посылки равен 'зарегистрирован'
+	query := `
+		UPDATE parcel 
+		SET address = :address 
+		WHERE number = :number AND status = :status`
 
-	// Если статус не "зарегистрирована", изменение адреса запрещено
-	if parcel.Status != ParcelStatusRegistered {
-		return fmt.Errorf("нельзя изменить адрес, так как статус посылки не 'зарегистрирован'")
-	}
-
-	// SQL-запрос для обновления адреса посылки по её номеру
-	query := `UPDATE parcel SET address = :address WHERE number = :number`
-	_, err = s.db.Exec(query, sql.Named("address", address), sql.Named("number", number))
+	// Выполнение запроса
+	_, err := s.db.Exec(query,
+		sql.Named("address", address),
+		sql.Named("number", number),
+		sql.Named("status", ParcelStatusRegistered),
+	)
 	if err != nil {
-		return err
+		return fmt.Errorf("ошибка при обновлении адреса: %w", err)
 	}
 
 	return nil
